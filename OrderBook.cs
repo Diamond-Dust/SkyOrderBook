@@ -33,7 +33,6 @@ namespace SkyOrderBook
         private void AddOrder(OrderBookEntry entry)
         {
             // Add to a specialised data structure
-            int indexPrice = entry.Price;
             OrderBookOrder order = new OrderBookOrder(entry);
             SortedDictionary<int, PriceInnerCounter> _orderByPrice;
             MultiSet _prices;
@@ -54,14 +53,14 @@ namespace SkyOrderBook
             // There never is any Add on an existing Id
             _orderById.Add(entry.OrderId, order);
             PriceInnerCounter? orderCounter;
-            if (_orderByPrice.TryGetValue(indexPrice, out orderCounter))
+            if (_orderByPrice.TryGetValue(entry.Price, out orderCounter))
             {
                 orderCounter.Add(order.Qty);
             }
             else
             {
                 orderCounter = new PriceInnerCounter();
-                _orderByPrice.Add(indexPrice, orderCounter);
+                _orderByPrice.Add(entry.Price, orderCounter);
                 orderCounter.Add(order.Qty);
             }
             _prices.Add(entry.Price);
@@ -69,7 +68,6 @@ namespace SkyOrderBook
 
         private void ModifyOrder(OrderBookEntry entry)
         {
-            int indexPrice = entry.Price;
             OrderBookOrder? preexistingOrder;
             PriceInnerCounter? orderCounter;
             SortedDictionary<int, PriceInnerCounter> _orderByPrice;
@@ -92,20 +90,14 @@ namespace SkyOrderBook
             }
 
             // Remove out-of-date information
-            if (_orderByPrice.TryGetValue(preexistingOrder.Price, out orderCounter))
+            // No TryGetValue, we never should have no such record here
+            orderCounter = _orderByPrice[preexistingOrder.Price];
+            orderCounter.Remove(preexistingOrder.Qty);
+            _prices.Remove(preexistingOrder.Price);
+            //We have emptied the Dictionary!
+            if (orderCounter.N == 0)
             {
-                orderCounter.Remove(preexistingOrder.Qty);
-                _prices.Remove(preexistingOrder.Price);
-                //We have emptied the Dictionary!
-                if (orderCounter.N == 0)
-                {
-                    _orderByPrice.Remove(preexistingOrder.Price);
-                }
-            }
-            else
-            {
-                { }
-                ;
+                _orderByPrice.Remove(preexistingOrder.Price);
             }
 
             // Add new information
@@ -116,7 +108,7 @@ namespace SkyOrderBook
             else
             {
                 orderCounter = new PriceInnerCounter();
-                _orderByPrice.Add(indexPrice, orderCounter);
+                _orderByPrice.Add(entry.Price, orderCounter);
                 orderCounter.Add(entry.Qty);
             }
 
@@ -127,7 +119,6 @@ namespace SkyOrderBook
 
         private void RemoveOrder(OrderBookEntry entry)
         {
-            int indexPrice = entry.Price;
             SortedDictionary<int, PriceInnerCounter> _orderByPrice;
             MultiSet _prices;
             switch (entry.Side)
@@ -150,20 +141,14 @@ namespace SkyOrderBook
             if (_orderById.TryGetValue(entry.OrderId, out preexistingOrder))
             {
                 // Remove out-of-date information
-                if (_orderByPrice.TryGetValue(preexistingOrder.Price, out orderCounter))
+                // No TryGetValue, we never should have no such record here
+                orderCounter = _orderByPrice[preexistingOrder.Price];
+                orderCounter.Remove(preexistingOrder.Qty);
+                _prices.Remove(preexistingOrder.Price);
+                //We have emptied the Dictionary!
+                if (orderCounter.N == 0)
                 {
-                    orderCounter.Remove(preexistingOrder.Qty);
-                    _prices.Remove(preexistingOrder.Price);
-                    //We have emptied the Dictionary!
-                    if (orderCounter.N == 0)
-                    {
-                        _orderByPrice.Remove(preexistingOrder.Price);
-                    }
-                }
-                else
-                {
-                    { }
-                    ;
+                    _orderByPrice.Remove(preexistingOrder.Price);
                 }
                 _orderById.Remove(entry.OrderId);
             }
@@ -178,18 +163,24 @@ namespace SkyOrderBook
             {
                 // This Dict should be small enough that the LINQ's .First() is not a huge time sink.
                 // Performance testing seems to corroborate that.
-                entry.A0 = _askPrices.Min;
-                entry.AQ0 = _orderAsksByPrice[_askPrices.Min].Q;
-                entry.AN0 = _orderAsksByPrice[_askPrices.Min].N;
+                // SortedSet does not have internal stale caching, so we can do this here
+                int min = _askPrices.Min;
+                PriceInnerCounter pmin = _orderAsksByPrice[min];
+                entry.A0 = min;
+                entry.AQ0 = pmin.Q;
+                entry.AN0 = pmin.N;
             }
 
             if (_orderBidsByPrice.Any())
             {
                 // This Dict should be small enough that the LINQ's .First() is not a huge time sink.
                 // Performance testing seems to corroborate that.
-                entry.B0 = _bidPrices.Max;
-                entry.BQ0 = _orderBidsByPrice[_bidPrices.Max].Q;
-                entry.BN0 = _orderBidsByPrice[_bidPrices.Max].N;
+                // SortedSet does not have internal stale caching, so we can do this here
+                int max = _bidPrices.Max;
+                PriceInnerCounter pmax = _orderBidsByPrice[max];
+                entry.B0 = max;
+                entry.BQ0 = pmax.Q;
+                entry.BN0 = pmax.N;
             }
 
         }

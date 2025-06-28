@@ -20,6 +20,15 @@ namespace SkyOrderBook
         private MultiSet _askPrices;
         private MultiSet _bidPrices;
 
+        private bool _askStale;
+        private bool _bidStale;
+        private int? _cacheB0;
+        private int? _cacheBQ0;
+        private int? _cacheBN0;
+        private int? _cacheA0;
+        private int? _cacheAQ0;
+        private int? _cacheAN0;
+
         public OrderBook()
         {
             _orderEntryList = new List<OrderBookEntry>();
@@ -28,6 +37,8 @@ namespace SkyOrderBook
             _orderBidsByPrice = new SortedDictionary<int, PriceInnerCounter>();
             _askPrices = new MultiSet();
             _bidPrices = new MultiSet();
+            _askStale = true;
+            _bidStale = true;
         }
 
         private void AddOrder(OrderBookEntry entry)
@@ -41,10 +52,14 @@ namespace SkyOrderBook
                 case OrderSide.ASK:
                     _orderByPrice = _orderAsksByPrice;
                     _prices = _askPrices;
+                    // Very conservative cache - if you touch ASK, we assume that the result changed
+                    _askStale = true;
                     break;
                 case OrderSide.BID:
                     _orderByPrice = _orderBidsByPrice;
                     _prices = _bidPrices;
+                    // Very conservative cache - if you touch BID, we assume that the result changed
+                    _bidStale = true;
                     break;
                 default:
                     return;
@@ -80,10 +95,14 @@ namespace SkyOrderBook
                 case OrderSide.ASK:
                     _orderByPrice = _orderAsksByPrice;
                     _prices = _askPrices;
+                    // Very conservative cache - if you touch ASK, we assume that the result changed
+                    _askStale = true;
                     break;
                 case OrderSide.BID:
                     _orderByPrice = _orderBidsByPrice;
                     _prices = _bidPrices;
+                    // Very conservative cache - if you touch BID, we assume that the result changed
+                    _bidStale = true;
                     break;
                 default:
                     return;
@@ -126,10 +145,14 @@ namespace SkyOrderBook
                 case OrderSide.ASK:
                     _orderByPrice = _orderAsksByPrice;
                     _prices = _askPrices;
+                    // Very conservative cache - if you touch ASK, we assume that the result changed
+                    _askStale = true;
                     break;
                 case OrderSide.BID:
                     _orderByPrice = _orderBidsByPrice;
                     _prices = _bidPrices;
+                    // Very conservative cache - if you touch BID, we assume that the result changed
+                    _bidStale = true;
                     break;
                 default:
                     return;
@@ -161,28 +184,41 @@ namespace SkyOrderBook
 
             if (_orderAsksByPrice.Any())
             {
-                // This Dict should be small enough that the LINQ's .First() is not a huge time sink.
+                // Why go through the tree if need not be?
+                if (_askStale)
+                {
+                    int min = _askPrices.Min;
+                    PriceInnerCounter pmin = _orderAsksByPrice[min];
+                    _cacheA0 = min;
+                    _cacheAQ0 = pmin.Q;
+                    _cacheAN0 = pmin.N;
+                    _askStale = false;
+                }
                 // Performance testing seems to corroborate that.
                 // SortedSet does not have internal stale caching, so we can do this here
-                int min = _askPrices.Min;
-                PriceInnerCounter pmin = _orderAsksByPrice[min];
-                entry.A0 = min;
-                entry.AQ0 = pmin.Q;
-                entry.AN0 = pmin.N;
+                entry.A0 = _cacheA0;
+                entry.AQ0 = _cacheAQ0;
+                entry.AN0 = _cacheAN0;
             }
 
             if (_orderBidsByPrice.Any())
             {
-                // This Dict should be small enough that the LINQ's .First() is not a huge time sink.
+                // Why go through the tree if need not be?
+                if (_bidStale)
+                {
+                    int max = _bidPrices.Max;
+                    PriceInnerCounter pmax = _orderBidsByPrice[max];
+                    _cacheB0 = max;
+                    _cacheBQ0 = pmax.Q;
+                    _cacheBN0 = pmax.N;
+                    _bidStale = false;
+                }
                 // Performance testing seems to corroborate that.
                 // SortedSet does not have internal stale caching, so we can do this here
-                int max = _bidPrices.Max;
-                PriceInnerCounter pmax = _orderBidsByPrice[max];
-                entry.B0 = max;
-                entry.BQ0 = pmax.Q;
-                entry.BN0 = pmax.N;
+                entry.B0 = _cacheB0;
+                entry.BQ0 = _cacheBQ0;
+                entry.BN0 = _cacheBN0;
             }
-
         }
 
         public void Add(OrderBookEntry entry)

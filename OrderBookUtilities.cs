@@ -3,41 +3,21 @@ namespace SkyOrderBook
     // Knowing how many elements will have the same price tells us that we may need
     // a quick-retrieval structure inside a quick-retrieval structure.
     // Given that live-counting N and Q can be a bit faster, that may be reason enough to create a dedicated class.
-    public class PriceInnerDictionary : Dictionary<long, OrderBookOrder>
+    public class PriceInnerCounter
     {
-        public PriceInnerDictionary() : base() { }
-        public PriceInnerDictionary(int capacity) : base(capacity) { }
+        public PriceInnerCounter() : base() { }
 
         public int Q { get; private set; }
         public int N { get; private set; }
-        public void Add(OrderBookOrder order)
+        public void Add(int quantity)
         {
-            Add(order.OrderId, order);
             N++;
-            Q += order.Qty;
+            Q += quantity;
         }
-        public void Add(OrderBookEntry entry)
+        public void Remove(int quantity)
         {
-            OrderBookOrder order = new OrderBookOrder(entry);
-            Add(order);
-        }
-        public bool Remove(OrderBookOrder order)
-        {
-            if (!ContainsKey(order.OrderId))
-                return false;
-            Remove(order.OrderId);
             N--;
-            Q -= order.Qty;
-            return true;
-        }
-        public bool Remove(OrderBookEntry entry)
-        {
-            if (!ContainsKey(entry.OrderId))
-                return false;
-            N--;
-            Q -= this[entry.OrderId].Qty;
-            Remove(entry.OrderId);
-            return true;
+            Q -= quantity;
         }
     }
 

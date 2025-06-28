@@ -6,6 +6,7 @@ namespace SkyOrderBook
     public class PriceInnerDictionary : Dictionary<long, OrderBookOrder>
     {
         public PriceInnerDictionary() : base() { }
+        public PriceInnerDictionary(int capacity) : base(capacity) { }
 
         public int Q { get; private set; }
         public int N { get; private set; }

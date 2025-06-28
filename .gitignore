@@ -485,3 +485,7 @@ $RECYCLE.BIN/
 
 # VSCode
 .vscode/
+
+#Project-specific
+*.csv
+*.nettrace

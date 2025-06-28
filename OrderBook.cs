@@ -51,11 +51,7 @@ namespace SkyOrderBook
                     return;
             }
 
-            if (_orderById.ContainsKey(entry.OrderId))
-            {
-                ModifyOrder(entry);
-                return;
-            }
+            // There never is any Add on an existing Id
             _orderById.Add(entry.OrderId, order);
             PriceInnerCounter? orderCounter;
             if (_orderByPrice.TryGetValue(indexPrice, out orderCounter))
@@ -79,61 +75,54 @@ namespace SkyOrderBook
             SortedDictionary<int, PriceInnerCounter> _orderByPrice;
             MultiSet _prices;
 
-            if (_orderById.TryGetValue(entry.OrderId, out preexistingOrder))
+            // There never is any Modify on an unexisting Id
+            preexistingOrder = _orderById[entry.OrderId];
+            switch (preexistingOrder.Side)
             {
-                switch (preexistingOrder.Side)
-                {
-                    case OrderSide.ASK:
-                        _orderByPrice = _orderAsksByPrice;
-                        _prices = _askPrices;
-                        break;
-                    case OrderSide.BID:
-                        _orderByPrice = _orderBidsByPrice;
-                        _prices = _bidPrices;
-                        break;
-                    default:
-                        return;
-                }
+                case OrderSide.ASK:
+                    _orderByPrice = _orderAsksByPrice;
+                    _prices = _askPrices;
+                    break;
+                case OrderSide.BID:
+                    _orderByPrice = _orderBidsByPrice;
+                    _prices = _bidPrices;
+                    break;
+                default:
+                    return;
+            }
 
-                // Remove out-of-date information
-                if (_orderByPrice.TryGetValue(preexistingOrder.Price, out orderCounter))
+            // Remove out-of-date information
+            if (_orderByPrice.TryGetValue(preexistingOrder.Price, out orderCounter))
+            {
+                orderCounter.Remove(preexistingOrder.Qty);
+                _prices.Remove(preexistingOrder.Price);
+                //We have emptied the Dictionary!
+                if (orderCounter.N == 0)
                 {
-                    orderCounter.Remove(preexistingOrder.Qty);
-                    _prices.Remove(preexistingOrder.Price);
-                    //We have emptied the Dictionary!
-                    if (orderCounter.N == 0)
-                    {
-                        _orderByPrice.Remove(preexistingOrder.Price);
-                    }
+                    _orderByPrice.Remove(preexistingOrder.Price);
                 }
-                else
-                {
-                    { }
-                    ;
-                }
-
-                // Add new information
-                if (_orderByPrice.TryGetValue(entry.Price, out orderCounter))
-                {
-                    orderCounter.Add(entry.Qty);
-                }
-                else
-                {
-                    orderCounter = new PriceInnerCounter();
-                    _orderByPrice.Add(indexPrice, orderCounter);
-                    orderCounter.Add(entry.Qty);
-                }
-
-                _prices.Add(entry.Price);
-
-                preexistingOrder.Update(entry);
             }
             else
             {
-                AddOrder(entry);
-                return;
+                { }
+                ;
             }
-            return;
+
+            // Add new information
+            if (_orderByPrice.TryGetValue(entry.Price, out orderCounter))
+            {
+                orderCounter.Add(entry.Qty);
+            }
+            else
+            {
+                orderCounter = new PriceInnerCounter();
+                _orderByPrice.Add(indexPrice, orderCounter);
+                orderCounter.Add(entry.Qty);
+            }
+
+            _prices.Add(entry.Price);
+
+            preexistingOrder.Update(entry);
         }
 
         private void RemoveOrder(OrderBookEntry entry)

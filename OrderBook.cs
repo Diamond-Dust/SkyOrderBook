@@ -5,7 +5,7 @@ namespace SkyOrderBook
     public class OrderBook
     {
         private List<OrderBookEntry> _orderEntryList;
-        private SortedDictionary<long, OrderBookOrder> _orderById;
+        private Dictionary<long, OrderBookOrder> _orderById;
         private SortedDictionary<int, PriceInnerCounter> _orderAsksByPrice;
         private SortedDictionary<int, PriceInnerCounter> _orderBidsByPrice;
         // Did you know that even though SortedDictionary is built upon SortedSet,
@@ -32,7 +32,7 @@ namespace SkyOrderBook
         public OrderBook()
         {
             _orderEntryList = new List<OrderBookEntry>();
-            _orderById = new SortedDictionary<long, OrderBookOrder>();
+            _orderById = new Dictionary<long, OrderBookOrder>();
             _orderAsksByPrice = new SortedDictionary<int, PriceInnerCounter>();
             _orderBidsByPrice = new SortedDictionary<int, PriceInnerCounter>();
             _askPrices = new MultiSet();

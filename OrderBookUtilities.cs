@@ -63,5 +63,10 @@ namespace SkyOrderBook
             _set.Clear();
             _counter.Clear();
         }
+
+        public bool Contains(int key)
+        {
+            return _counter.ContainsKey(key);
+        }
     }
 }

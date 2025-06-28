@@ -104,18 +104,27 @@ namespace SkyOrderBook
                     return;
             }
 
+            // Only Qty is changing
+            orderCounter = _orderByPrice[preexistingOrder.Price];
+            if (preexistingOrder.Price == entry.Price)
+            {
+                orderCounter.Remove(preexistingOrder.Qty);
+                orderCounter.Add(entry.Qty);
+                preexistingOrder.Update(entry);
+                return;
+            }
+
             // Remove out-of-date information
             // Conservative cache - if you touch Order with the best price, we assume that the result changed
             if (preexistingOrder.Side == OrderSide.ASK)
             {
-                _askStale = ((preexistingOrder.Price == _cacheA0) || (entry.Price <= _cacheA0)) && (preexistingOrder.Price != entry.Price);
+                _askStale = (preexistingOrder.Price == _cacheA0) || (entry.Price <= _cacheA0);
             }
             else
             {
-                _bidStale = ((preexistingOrder.Price == _cacheB0) || (_bidStale = entry.Price >= _cacheB0)) && (preexistingOrder.Price != entry.Price);
+                _bidStale = (preexistingOrder.Price == _cacheB0) || (_bidStale = entry.Price >= _cacheB0);
             }
             // No TryGetValue, we never should have no such record here
-            orderCounter = _orderByPrice[preexistingOrder.Price];
             orderCounter.Remove(preexistingOrder.Qty);
             _prices.Remove(preexistingOrder.Price);
             //We have emptied the Dictionary!

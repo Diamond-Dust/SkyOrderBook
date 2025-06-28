@@ -52,14 +52,14 @@ namespace SkyOrderBook
                 case OrderSide.ASK:
                     _orderByPrice = _orderAsksByPrice;
                     _prices = _askPrices;
-                    // Very conservative cache - if you touch ASK, we assume that the result changed
-                    _askStale = true;
+                    // Conservative cache - if you can beat ASK with the best price, we assume that the result changed
+                    _askStale = entry.Price <= _cacheA0;
                     break;
                 case OrderSide.BID:
                     _orderByPrice = _orderBidsByPrice;
                     _prices = _bidPrices;
-                    // Very conservative cache - if you touch BID, we assume that the result changed
-                    _bidStale = true;
+                    // Conservative cache - if you can beat BID with the best price, we assume that the result changed
+                    _bidStale = entry.Price >= _cacheB0;
                     break;
                 default:
                     return;
@@ -95,20 +95,25 @@ namespace SkyOrderBook
                 case OrderSide.ASK:
                     _orderByPrice = _orderAsksByPrice;
                     _prices = _askPrices;
-                    // Very conservative cache - if you touch ASK, we assume that the result changed
-                    _askStale = true;
                     break;
                 case OrderSide.BID:
                     _orderByPrice = _orderBidsByPrice;
                     _prices = _bidPrices;
-                    // Very conservative cache - if you touch BID, we assume that the result changed
-                    _bidStale = true;
                     break;
                 default:
                     return;
             }
 
             // Remove out-of-date information
+            // Conservative cache - if you touch Order with the best price, we assume that the result changed
+            if (preexistingOrder.Side == OrderSide.ASK)
+            {
+                _askStale = ((preexistingOrder.Price == _cacheA0) || (entry.Price <= _cacheA0)) && (preexistingOrder.Price != entry.Price);
+            }
+            else
+            {
+                _bidStale = ((preexistingOrder.Price == _cacheB0) || (_bidStale = entry.Price >= _cacheB0)) && (preexistingOrder.Price != entry.Price);
+            }
             // No TryGetValue, we never should have no such record here
             orderCounter = _orderByPrice[preexistingOrder.Price];
             orderCounter.Remove(preexistingOrder.Qty);
@@ -145,14 +150,10 @@ namespace SkyOrderBook
                 case OrderSide.ASK:
                     _orderByPrice = _orderAsksByPrice;
                     _prices = _askPrices;
-                    // Very conservative cache - if you touch ASK, we assume that the result changed
-                    _askStale = true;
                     break;
                 case OrderSide.BID:
                     _orderByPrice = _orderBidsByPrice;
                     _prices = _bidPrices;
-                    // Very conservative cache - if you touch BID, we assume that the result changed
-                    _bidStale = true;
                     break;
                 default:
                     return;
@@ -163,6 +164,16 @@ namespace SkyOrderBook
             PriceInnerCounter? orderCounter;
             if (_orderById.TryGetValue(entry.OrderId, out preexistingOrder))
             {
+                // Conservative cache - if you touch Order with the best price, we assume that the result changed
+                if (preexistingOrder.Side == OrderSide.ASK)
+                {
+                    _askStale = preexistingOrder.Price == _cacheA0;
+                }
+                else
+                {
+                    _bidStale = preexistingOrder.Price == _cacheB0;
+                }
+
                 // Remove out-of-date information
                 // No TryGetValue, we never should have no such record here
                 orderCounter = _orderByPrice[preexistingOrder.Price];

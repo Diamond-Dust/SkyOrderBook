@@ -47,12 +47,12 @@ namespace SkyOrderBook
                 case OrderSide.ASK:
                     _prices = _askPrices;
                     // Conservative cache - if you can beat ASK with the best price, we assume that the result changed
-                    _askStale = entry.Price <= _cacheA0;
+                    _askStale = true;
                     break;
                 case OrderSide.BID:
                     _prices = _bidPrices;
                     // Conservative cache - if you can beat BID with the best price, we assume that the result changed
-                    _bidStale = entry.Price >= _cacheB0;
+                    _bidStale = true;
                     break;
                 default:
                     return;
@@ -81,6 +81,15 @@ namespace SkyOrderBook
                 default:
                     return;
             }
+            // Conservative cache - if you touch Order with the best price, we assume that the result changed
+            if (preexistingOrder.Side == OrderSide.ASK)
+            {
+                _askStale = true;
+            }
+            else
+            {
+                _bidStale = true;
+            }
 
             // Only Qty is changing
             if (preexistingOrder.Price == entry.Price)
@@ -91,15 +100,6 @@ namespace SkyOrderBook
             }
 
             // Remove out-of-date information
-            // Conservative cache - if you touch Order with the best price, we assume that the result changed
-            if (preexistingOrder.Side == OrderSide.ASK)
-            {
-                _askStale = (preexistingOrder.Price == _cacheA0) || (entry.Price <= _cacheA0);
-            }
-            else
-            {
-                _bidStale = (preexistingOrder.Price == _cacheB0) || (_bidStale = entry.Price >= _cacheB0);
-            }
 
             // Remove old information
             _prices.Remove(preexistingOrder.Price, preexistingOrder.Qty);
@@ -132,11 +132,11 @@ namespace SkyOrderBook
                 // Conservative cache - if you touch Order with the best price, we assume that the result changed
                 if (preexistingOrder.Side == OrderSide.ASK)
                 {
-                    _askStale = preexistingOrder.Price == _cacheA0;
+                    _askStale = true;
                 }
                 else
                 {
-                    _bidStale = preexistingOrder.Price == _cacheB0;
+                    _bidStale = true;
                 }
 
                 // Remove out-of-date information

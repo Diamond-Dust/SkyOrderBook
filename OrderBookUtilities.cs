@@ -37,7 +37,7 @@ namespace SkyOrderBook
 
         public void Add(int key)
         {
-            if (_set.Contains(key))
+            if (Contains(key))
             {
                 _counter[key]++;
             }
@@ -49,7 +49,7 @@ namespace SkyOrderBook
         }
         public void Remove(int key)
         {
-            if (_set.Contains(key))
+            if (Contains(key))
             {
                 _counter[key]--;
                 if (_counter[key] == 0)

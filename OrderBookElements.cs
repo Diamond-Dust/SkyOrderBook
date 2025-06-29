@@ -37,7 +37,6 @@ namespace SkyOrderBook
     public class OrderBookEntry
     {
         public string OriginalLine { get; set; }
-        public string? SourceTime { get; set; }
         public OrderSide Side { get; set; }
         public OrderAction Action { get; set; }
         // The Clear action makes us not care about the OrderId, Price and Qty, so we can just assign it here.
@@ -53,8 +52,7 @@ namespace SkyOrderBook
 
         private void assignFromLineQuick()
         {
-            // Source time always has the same number of digits in this task and we do not care for its value save for re-saving it, so we can quicksplit it.: -0.07
-            SourceTime = OriginalLine[0..11];
+            // We do not care about SourceTime
             // There is only one case without a Side
             Side = OriginalLine[12] == '1' ? OrderSide.BID : OriginalLine[12] == '2' ? OrderSide.ASK : OrderSide.NONE;
             int sideIndex = Side == OrderSide.NONE ? 13 : 14;

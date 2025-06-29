@@ -1,63 +1,61 @@
 namespace SkyOrderBook
 {
-    // Knowing how many elements will have the same price tells us that we may need
-    // a quick-retrieval structure inside a quick-retrieval structure.
-    // Given that live-counting N and Q can be a bit faster, that may be reason enough to create a dedicated class.
-    public class PriceInnerCounter
+    public class Counter(int n, int q)
     {
-        public PriceInnerCounter() : base() { }
-
-        public int Q { get; private set; }
-        public int N { get; private set; }
-        public void Add(int quantity)
-        {
-            N++;
-            Q += quantity;
-        }
-        public void Remove(int quantity)
-        {
-            N--;
-            Q -= quantity;
-        }
+        public int Q { get; set; } = q;
+        public int N { get; set; } = n;
     }
 
-    public class MultiSet
+    // Leaner version of SortedDictionary - the Sorted property is granted via the SortedSet
+    // (like in the SortedDictionary), while O(1) access is provided via a Dictionary.
+    // Min and Max are exposed.
+    public class MultiSetCounter
     {
         private SortedSet<int> _set;
-        private Dictionary<int, int> _counter;
+        private Dictionary<int, Counter> _counter;
         public int Min { get { return _set.Min; } }
         public int Max { get { return _set.Max; } }
         public int Count { get { return _set.Count; } }
 
-        public MultiSet()
+        public MultiSetCounter()
         {
             _set = new SortedSet<int>();
-            _counter = new Dictionary<int, int>();
+            _counter = new Dictionary<int, Counter>();
         }
 
-        public void Add(int key)
+        public void Add(int key, int quantity)
         {
             if (Contains(key))
             {
-                _counter[key]++;
+                _counter[key].N++;
+                _counter[key].Q += quantity;
             }
             else
             {
                 _set.Add(key);
-                _counter[key] = 1;
+                _counter[key] = new Counter(1, quantity);
             }
         }
-        public void Remove(int key)
+        public void Remove(int key, int quantity)
         {
             if (Contains(key))
             {
-                _counter[key]--;
-                if (_counter[key] == 0)
+                _counter[key].N--;
+                if (_counter[key].N == 0)
                 {
                     _counter.Remove(key);
                     _set.Remove(key);
                 }
+                else
+                {
+                    _counter[key].Q -= quantity;
+                }
             }
+        }
+        //It's your fault if you update a nonexistant entry, we're aiming for speed here!
+        public void Update(int key, int diff)
+        {
+            _counter[key].Q += diff;
         }
         public void Clear()
         {
@@ -68,6 +66,11 @@ namespace SkyOrderBook
         public bool Contains(int key)
         {
             return _counter.ContainsKey(key);
+        }
+
+        public Counter GetCounter(int key)
+        {
+            return _counter[key];
         }
     }
 }

@@ -6,8 +6,6 @@ namespace SkyOrderBook
     {
         private List<OrderBookEntry> _orderEntryList;
         private Dictionary<long, OrderBookOrder> _orderById;
-        private Dictionary<int, PriceInnerCounter> _orderAsksByPrice;
-        private Dictionary<int, PriceInnerCounter> _orderBidsByPrice;
         // Did you know that even though SortedDictionary is built upon SortedSet,
         // which is built upon a binary search tree, the only way to get
         // First/Last element is to call e.g. LINQ's .Last(), which
@@ -17,8 +15,8 @@ namespace SkyOrderBook
         // The easiest way to circumvent this is by using negative price values as keys.
         // However, the First() method is still slow, so a redundant SortedSet multi set will do.
         // This practically doubles our SortedDictionary just for quick access to the first and last elements.
-        private MultiSet _askPrices;
-        private MultiSet _bidPrices;
+        private MultiSetCounter _askPrices;
+        private MultiSetCounter _bidPrices;
 
         private bool _askStale;
         private bool _bidStale;
@@ -33,10 +31,8 @@ namespace SkyOrderBook
         {
             _orderEntryList = new List<OrderBookEntry>();
             _orderById = new Dictionary<long, OrderBookOrder>(70000);
-            _orderAsksByPrice = new Dictionary<int, PriceInnerCounter>();
-            _orderBidsByPrice = new Dictionary<int, PriceInnerCounter>();
-            _askPrices = new MultiSet();
-            _bidPrices = new MultiSet();
+            _askPrices = new MultiSetCounter();
+            _bidPrices = new MultiSetCounter();
             _askStale = true;
             _bidStale = true;
         }
@@ -45,18 +41,15 @@ namespace SkyOrderBook
         {
             // Add to a specialised data structure
             OrderBookOrder order = new OrderBookOrder(entry);
-            Dictionary<int, PriceInnerCounter> _orderByPrice;
-            MultiSet _prices;
+            MultiSetCounter _prices;
             switch (entry.Side)
             {
                 case OrderSide.ASK:
-                    _orderByPrice = _orderAsksByPrice;
                     _prices = _askPrices;
                     // Conservative cache - if you can beat ASK with the best price, we assume that the result changed
                     _askStale = entry.Price <= _cacheA0;
                     break;
                 case OrderSide.BID:
-                    _orderByPrice = _orderBidsByPrice;
                     _prices = _bidPrices;
                     // Conservative cache - if you can beat BID with the best price, we assume that the result changed
                     _bidStale = entry.Price >= _cacheB0;
@@ -67,37 +60,22 @@ namespace SkyOrderBook
 
             // There never is any Add on an existing Id
             _orderById.Add(entry.OrderId, order);
-            PriceInnerCounter? orderCounter;
-            if (_orderByPrice.TryGetValue(entry.Price, out orderCounter))
-            {
-                orderCounter.Add(order.Qty);
-            }
-            else
-            {
-                orderCounter = new PriceInnerCounter();
-                _orderByPrice.Add(entry.Price, orderCounter);
-                orderCounter.Add(order.Qty);
-            }
-            _prices.Add(entry.Price);
+            _prices.Add(order.Price, order.Qty);
         }
 
         private void ModifyOrder(OrderBookEntry entry)
         {
             OrderBookOrder? preexistingOrder;
-            PriceInnerCounter? orderCounter;
-            Dictionary<int, PriceInnerCounter> _orderByPrice;
-            MultiSet _prices;
+            MultiSetCounter _prices;
 
             // There never is any Modify on an unexisting Id
             preexistingOrder = _orderById[entry.OrderId];
             switch (preexistingOrder.Side)
             {
                 case OrderSide.ASK:
-                    _orderByPrice = _orderAsksByPrice;
                     _prices = _askPrices;
                     break;
                 case OrderSide.BID:
-                    _orderByPrice = _orderBidsByPrice;
                     _prices = _bidPrices;
                     break;
                 default:
@@ -105,11 +83,9 @@ namespace SkyOrderBook
             }
 
             // Only Qty is changing
-            orderCounter = _orderByPrice[preexistingOrder.Price];
             if (preexistingOrder.Price == entry.Price)
             {
-                orderCounter.Remove(preexistingOrder.Qty);
-                orderCounter.Add(entry.Qty);
+                _prices.Update(preexistingOrder.Price, entry.Qty - preexistingOrder.Qty);
                 preexistingOrder.Update(entry);
                 return;
             }
@@ -124,44 +100,25 @@ namespace SkyOrderBook
             {
                 _bidStale = (preexistingOrder.Price == _cacheB0) || (_bidStale = entry.Price >= _cacheB0);
             }
-            // No TryGetValue, we never should have no such record here
-            orderCounter.Remove(preexistingOrder.Qty);
-            _prices.Remove(preexistingOrder.Price);
-            //We have emptied the Dictionary!
-            if (orderCounter.N == 0)
-            {
-                _orderByPrice.Remove(preexistingOrder.Price);
-            }
+
+            // Remove old information
+            _prices.Remove(preexistingOrder.Price, preexistingOrder.Qty);
 
             // Add new information
-            if (_orderByPrice.TryGetValue(entry.Price, out orderCounter))
-            {
-                orderCounter.Add(entry.Qty);
-            }
-            else
-            {
-                orderCounter = new PriceInnerCounter();
-                _orderByPrice.Add(entry.Price, orderCounter);
-                orderCounter.Add(entry.Qty);
-            }
-
-            _prices.Add(entry.Price);
+            _prices.Add(entry.Price, entry.Qty);
 
             preexistingOrder.Update(entry);
         }
 
         private void RemoveOrder(OrderBookEntry entry)
         {
-            Dictionary<int, PriceInnerCounter> _orderByPrice;
-            MultiSet _prices;
+            MultiSetCounter _prices;
             switch (entry.Side)
             {
                 case OrderSide.ASK:
-                    _orderByPrice = _orderAsksByPrice;
                     _prices = _askPrices;
                     break;
                 case OrderSide.BID:
-                    _orderByPrice = _orderBidsByPrice;
                     _prices = _bidPrices;
                     break;
                 default:
@@ -170,7 +127,6 @@ namespace SkyOrderBook
 
             // Remove from a specialised data structure
             OrderBookOrder? preexistingOrder;
-            PriceInnerCounter? orderCounter;
             if (_orderById.TryGetValue(entry.OrderId, out preexistingOrder))
             {
                 // Conservative cache - if you touch Order with the best price, we assume that the result changed
@@ -184,15 +140,8 @@ namespace SkyOrderBook
                 }
 
                 // Remove out-of-date information
-                // No TryGetValue, we never should have no such record here
-                orderCounter = _orderByPrice[preexistingOrder.Price];
-                orderCounter.Remove(preexistingOrder.Qty);
-                _prices.Remove(preexistingOrder.Price);
-                //We have emptied the Dictionary!
-                if (orderCounter.N == 0)
-                {
-                    _orderByPrice.Remove(preexistingOrder.Price);
-                }
+                _prices.Remove(preexistingOrder.Price, preexistingOrder.Qty);
+
                 _orderById.Remove(entry.OrderId);
             }
         }
@@ -209,10 +158,10 @@ namespace SkyOrderBook
                 if (_askStale)
                 {
                     int min = _askPrices.Min;
-                    PriceInnerCounter pmin = _orderAsksByPrice[min];
+                    Counter cmin = _askPrices.GetCounter(min);
                     _cacheA0 = min;
-                    _cacheAQ0 = pmin.Q;
-                    _cacheAN0 = pmin.N;
+                    _cacheAQ0 = cmin.Q;
+                    _cacheAN0 = cmin.N;
                     _askStale = false;
                 }
                 // Performance testing seems to corroborate that.
@@ -229,10 +178,10 @@ namespace SkyOrderBook
                 if (_bidStale)
                 {
                     int max = _bidPrices.Max;
-                    PriceInnerCounter pmax = _orderBidsByPrice[max];
+                    Counter cmax = _bidPrices.GetCounter(max);
                     _cacheB0 = max;
-                    _cacheBQ0 = pmax.Q;
-                    _cacheBN0 = pmax.N;
+                    _cacheBQ0 = cmax.Q;
+                    _cacheBN0 = cmax.N;
                     _bidStale = false;
                 }
                 // Performance testing seems to corroborate that.
@@ -252,8 +201,6 @@ namespace SkyOrderBook
         private void ClearOrders()
         {
             _orderById.Clear();
-            _orderAsksByPrice.Clear();
-            _orderBidsByPrice.Clear();
             _askPrices.Clear();
             _bidPrices.Clear();
         }

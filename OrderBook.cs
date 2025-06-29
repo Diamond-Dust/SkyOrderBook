@@ -47,12 +47,12 @@ namespace SkyOrderBook
                 case OrderSide.ASK:
                     _prices = _askPrices;
                     // Conservative cache - if you can beat ASK with the best price, we assume that the result changed
-                    _askStale = true;
+                    _askStale |= entry.Price <= _cacheA0;
                     break;
                 case OrderSide.BID:
                     _prices = _bidPrices;
                     // Conservative cache - if you can beat BID with the best price, we assume that the result changed
-                    _bidStale = true;
+                    _bidStale |= entry.Price >= _cacheB0;
                     break;
                 default:
                     return;
@@ -84,11 +84,11 @@ namespace SkyOrderBook
             // Conservative cache - if you touch Order with the best price, we assume that the result changed
             if (preexistingOrder.Side == OrderSide.ASK)
             {
-                _askStale = true;
+                _askStale |= (preexistingOrder.Price == _cacheA0) || (entry.Price <= _cacheA0);
             }
             else
             {
-                _bidStale = true;
+                _bidStale |= (preexistingOrder.Price == _cacheB0) || (entry.Price >= _cacheB0);
             }
 
             // Only Qty is changing
@@ -132,11 +132,11 @@ namespace SkyOrderBook
                 // Conservative cache - if you touch Order with the best price, we assume that the result changed
                 if (preexistingOrder.Side == OrderSide.ASK)
                 {
-                    _askStale = true;
+                    _askStale |= preexistingOrder.Price == _cacheA0;
                 }
                 else
                 {
-                    _bidStale = true;
+                    _bidStale |= preexistingOrder.Price == _cacheB0;
                 }
 
                 // Remove out-of-date information
@@ -207,6 +207,10 @@ namespace SkyOrderBook
 
         public void Construct()
         {
+            _askStale = true;
+            _bidStale = true;
+            ClearOrders();
+
             foreach (OrderBookEntry entry in _orderEntryList)
             {
                 // Perform action

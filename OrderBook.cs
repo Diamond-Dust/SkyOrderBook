@@ -6,8 +6,8 @@ namespace SkyOrderBook
     {
         private List<OrderBookEntry> _orderEntryList;
         private Dictionary<long, OrderBookOrder> _orderById;
-        private SortedDictionary<int, PriceInnerCounter> _orderAsksByPrice;
-        private SortedDictionary<int, PriceInnerCounter> _orderBidsByPrice;
+        private Dictionary<int, PriceInnerCounter> _orderAsksByPrice;
+        private Dictionary<int, PriceInnerCounter> _orderBidsByPrice;
         // Did you know that even though SortedDictionary is built upon SortedSet,
         // which is built upon a binary search tree, the only way to get
         // First/Last element is to call e.g. LINQ's .Last(), which
@@ -32,9 +32,9 @@ namespace SkyOrderBook
         public OrderBook()
         {
             _orderEntryList = new List<OrderBookEntry>();
-            _orderById = new Dictionary<long, OrderBookOrder>();
-            _orderAsksByPrice = new SortedDictionary<int, PriceInnerCounter>();
-            _orderBidsByPrice = new SortedDictionary<int, PriceInnerCounter>();
+            _orderById = new Dictionary<long, OrderBookOrder>(70000);
+            _orderAsksByPrice = new Dictionary<int, PriceInnerCounter>();
+            _orderBidsByPrice = new Dictionary<int, PriceInnerCounter>();
             _askPrices = new MultiSet();
             _bidPrices = new MultiSet();
             _askStale = true;
@@ -45,7 +45,7 @@ namespace SkyOrderBook
         {
             // Add to a specialised data structure
             OrderBookOrder order = new OrderBookOrder(entry);
-            SortedDictionary<int, PriceInnerCounter> _orderByPrice;
+            Dictionary<int, PriceInnerCounter> _orderByPrice;
             MultiSet _prices;
             switch (entry.Side)
             {
@@ -85,7 +85,7 @@ namespace SkyOrderBook
         {
             OrderBookOrder? preexistingOrder;
             PriceInnerCounter? orderCounter;
-            SortedDictionary<int, PriceInnerCounter> _orderByPrice;
+            Dictionary<int, PriceInnerCounter> _orderByPrice;
             MultiSet _prices;
 
             // There never is any Modify on an unexisting Id
@@ -152,7 +152,7 @@ namespace SkyOrderBook
 
         private void RemoveOrder(OrderBookEntry entry)
         {
-            SortedDictionary<int, PriceInnerCounter> _orderByPrice;
+            Dictionary<int, PriceInnerCounter> _orderByPrice;
             MultiSet _prices;
             switch (entry.Side)
             {

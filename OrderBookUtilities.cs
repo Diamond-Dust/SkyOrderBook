@@ -25,10 +25,11 @@ namespace SkyOrderBook
 
         public void Add(int key, int quantity)
         {
-            if (Contains(key))
+            Counter? counter;
+            if (_counter.TryGetValue(key, out counter))
             {
-                _counter[key].N++;
-                _counter[key].Q += quantity;
+                counter.N++;
+                counter.Q += quantity;
             }
             else
             {
@@ -38,17 +39,18 @@ namespace SkyOrderBook
         }
         public void Remove(int key, int quantity)
         {
-            if (Contains(key))
+            Counter? counter;
+            if (_counter.TryGetValue(key, out counter))
             {
-                _counter[key].N--;
-                if (_counter[key].N == 0)
+                counter.N--;
+                if (counter.N == 0)
                 {
                     _counter.Remove(key);
                     _set.Remove(key);
                 }
                 else
                 {
-                    _counter[key].Q -= quantity;
+                    counter.Q -= quantity;
                 }
             }
         }

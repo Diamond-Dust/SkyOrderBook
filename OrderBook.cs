@@ -202,7 +202,8 @@ namespace SkyOrderBook
             if (_orderById.Count == 0)
                 return;
 
-            if (_orderAsksByPrice.Any())
+            // O(1) without LINQ's IEnumerable troubles
+            if (_askPrices.Count > 0)
             {
                 // Why go through the tree if need not be?
                 if (_askStale)
@@ -221,7 +222,8 @@ namespace SkyOrderBook
                 entry.AN0 = _cacheAN0;
             }
 
-            if (_orderBidsByPrice.Any())
+            // O(1) without LINQ's IEnumerable troubles
+            if (_bidPrices.Count > 0)
             {
                 // Why go through the tree if need not be?
                 if (_bidStale)

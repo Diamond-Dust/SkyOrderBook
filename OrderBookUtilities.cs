@@ -27,6 +27,7 @@ namespace SkyOrderBook
         private Dictionary<int, int> _counter;
         public int Min { get { return _set.Min; } }
         public int Max { get { return _set.Max; } }
+        public int Count { get { return _set.Count; } }
 
         public MultiSet()
         {

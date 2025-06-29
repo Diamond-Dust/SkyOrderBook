@@ -42,7 +42,7 @@ public class EntryPoint
 
         // ######### Step 2: OrderBook construction #########
         long ms2 = long.MaxValue, ts2 = long.MaxValue;
-        for (int i = 0; i < 10; i++)
+        for (int i = 0; i < 100; i++)
         {
             sw2.Start();
 

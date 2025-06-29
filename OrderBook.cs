@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Runtime.InteropServices;
 
 namespace SkyOrderBook
 {
@@ -211,7 +212,7 @@ namespace SkyOrderBook
             _bidStale = true;
             ClearOrders();
 
-            foreach (OrderBookEntry entry in _orderEntryList)
+            foreach (OrderBookEntry entry in CollectionsMarshal.AsSpan(_orderEntryList))
             {
                 // Perform action
                 switch (entry.Action)
@@ -238,7 +239,7 @@ namespace SkyOrderBook
         public void Save(StreamWriter sw)
         {
             sw.WriteLine("SourceTime;Side;Action;OrderId;Price;Qty;B0;BQ0;BN0;A0;AQ0;AN0");
-            foreach (OrderBookEntry entry in _orderEntryList)
+            foreach (OrderBookEntry entry in CollectionsMarshal.AsSpan(_orderEntryList))
             {
                 sw.WriteLine(entry.ToString());
             }
